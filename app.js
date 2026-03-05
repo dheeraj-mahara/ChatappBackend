@@ -19,9 +19,10 @@ const app = express()
 const server = http.createServer(app)
 const port = process.env.PORT || 5000
 
+const allowedOrigin = "https://vibely-dheeraj-maharas-projects.vercel.app"; // No slash at the end
 const io = new Server(server, {
   cors: {
- origin: "https://vibely-dheeraj-maharas-projects.vercel.app/",
+ origin: allowedOrigin,
     methods: ["GET", "POST", "DELETE"],
     credentials: true,
   },
@@ -30,7 +31,7 @@ const io = new Server(server, {
 app.set("socketio", io);
 
 app.use(cors({
- origin: "https://vibely-dheeraj-maharas-projects.vercel.app/",
+ origin: allowedOrigin,
   credentials: true
 }));
 
