@@ -21,7 +21,7 @@ const port = process.env.PORT || 5000
 
 const io = new Server(server, {
   cors: {
- origin: true,
+ origin: "https://vibely-dheeraj-maharas-projects.vercel.app/",
     methods: ["GET", "POST", "DELETE"],
     credentials: true,
   },
@@ -30,7 +30,7 @@ const io = new Server(server, {
 app.set("socketio", io);
 
 app.use(cors({
- origin: true,
+ origin: "https://vibely-dheeraj-maharas-projects.vercel.app/",
   credentials: true
 }));
 
