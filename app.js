@@ -19,7 +19,7 @@ const app = express()
 const server = http.createServer(app)
 const port = process.env.PORT || 5000
 
-const allowedOrigin = "https://vibely-dheeraj-maharas-projects.vercel.app"; // No slash at the end
+const allowedOrigin = "https://chat-vibe-theta.vercel.app/"; // No slash at the end
 const io = new Server(server, {
   cors: {
  origin: allowedOrigin,
