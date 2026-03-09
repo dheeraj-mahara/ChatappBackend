@@ -19,9 +19,15 @@ const app = express()
 const server = http.createServer(app)
 const port = process.env.PORT || 5000
 
-const allowedOrigin = "https://chat-vibe-theta.vercel.app"; // No slash at the end
+// const allowedOrigin = "https://chat-vibe-theta.vercel.app";
+ const allowedOrigin = [
+      "http://localhost:5173",
+      "https://chat-vibe-theta.vercel.app"
+    ]
+     // No slash at the end
+
 const io = new Server(server, {
-  cors: {
+  cors: { 
  origin: allowedOrigin,
     methods: ["GET", "POST", "DELETE"],
     credentials: true,
