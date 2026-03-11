@@ -46,11 +46,15 @@ app.use(cookieParser());
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+
+app.get("/ping", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // routes 
 app.use("/api/auth", AuthRoutes);
 app.use("/api/chat", ChatRoutes);
 app.use("/api/status", StatusRoutes);
-
 
 
 const onlineUsers = new Map();
