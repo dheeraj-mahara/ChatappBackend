@@ -1,5 +1,5 @@
 import admin from "../firebaseAdmin.js";
-import User from "../models/User.js";
+import User from "../models/user.js";
 
 export const sendNotification = async (receiverId, message, sendername) => {
   try {

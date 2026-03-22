@@ -11,7 +11,7 @@ import AuthRoutes from "./src/routes/auth.router.js";
 import StatusRoutes from "./src/routes/status.router.js"
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import ChatList from "./src/models/ChatList.js"
-import user from "./src/models/User.js"
+import user from "./src/models/user.js"
 import axios from "axios";
 axios.defaults.withCredentials = true;
 
