@@ -21,10 +21,11 @@ router.post("/save-token", async (req, res) => {
 
 });
 
+
 router.get("/test", async (req, res) => {
 
  await admin.messaging().send({
-  token: "fMMbRG8nx-vHP8DBcwHHlL:APA91bHekebdKUutD0Ja_xoJWnEsYnUJGpd6hIGeD8rEYEFvUJDzspkkXB1DJFIovFoUv6nBwgx6wUyZEO6SDgUe2p2ryG7E5Czic2F0Tm_W94PnT_k3oZ4",
+  token: process.env.FIREBASE_PRIVATE_KEY,
   notification: {
     title: "Test",
     body: "Working 🔥"
