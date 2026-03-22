@@ -9,6 +9,7 @@ import cors from "cors";
 import ChatRoutes from "./src/routes/chat.router.js";
 import AuthRoutes from "./src/routes/auth.router.js";
 import StatusRoutes from "./src/routes/status.router.js"
+import notificationRoutes from "./src/routes/notificationRoutes.js";
 import ChatList from "./src/models/ChatList.js"
 import user from "./src/models/user.js"
 import axios from "axios";
@@ -24,7 +25,6 @@ const port = process.env.PORT || 5000
       "http://localhost:5173",
       "https://chat-vibe-theta.vercel.app"
     ]
-     // No slash at the end
 
 const io = new Server(server, {
   cors: { 
@@ -55,6 +55,8 @@ app.get("/ping", (req, res) => {
 app.use("/api/auth", AuthRoutes);
 app.use("/api/chat", ChatRoutes);
 app.use("/api/status", StatusRoutes);
+app.use("/api/notification", notificationRoutes);
+
 
 
 const onlineUsers = new Map();

@@ -6,7 +6,7 @@ import User from "../models/user.js";
 import Chat from "../models/chat.js";
 import ChatList from "../models/ChatList.js";
 import cloudinary from "../config/cloudinary.js";
-
+import { sendNotification } from "./notificationController.js";
 
 
 
@@ -122,6 +122,10 @@ export const sendMessage = async (req, res) => {
     const senderId = req.user.userid;
     const receiverId = req.params.receiverId;
     const { text } = req.body;
+const sender = await User.findById(senderId).select("name")
+const sendername = sender.name
+
+
 
     if (!text && !req.file) {
       return res.status(400).json({
@@ -129,6 +133,8 @@ export const sendMessage = async (req, res) => {
         message: "Empty message"
       });
     }
+        await sendNotification(receiverId, text,sendername);
+
 
     let imageUrl = null;
     let public_id = null;
@@ -145,7 +151,6 @@ export const sendMessage = async (req, res) => {
       hour12: true
     });
 
-    // ✅ VERY IMPORTANT: message field
     const savedMessage = await saveMessageToDB({
       senderId,
       receiverId,
@@ -154,6 +159,7 @@ export const sendMessage = async (req, res) => {
       public_id,
       time
     });
+     
 
     return res.json({
       success: true,
@@ -167,17 +173,8 @@ export const sendMessage = async (req, res) => {
 };
 
 
-export const saveMessageToDB = async ({
-  senderId,
-  receiverId,
-  message,
-  imageUrl,
-  public_id,
-  time
-}) => {
-
+export const saveMessageToDB = async ({ senderId, receiverId, message, imageUrl, public_id, time }) => {
   try {
-
     await ChatList.findOneAndUpdate(
       { ownerId: senderId, contactId: receiverId },
       {
