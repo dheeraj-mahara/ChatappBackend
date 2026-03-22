@@ -2,7 +2,7 @@
 import { uploadeImage } from "../utils/uploadToCloudinary.js";
 import { getChatData } from "../services/chat.service.js";
 import { getAllUsers } from "./auth.controller.js";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import Chat from "../models/chat.js";
 import ChatList from "../models/ChatList.js";
 import cloudinary from "../config/cloudinary.js";
