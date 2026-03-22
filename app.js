@@ -58,7 +58,6 @@ app.use("/api/status", StatusRoutes);
 app.use("/api/notification", notificationRoutes);
 
 
-
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
