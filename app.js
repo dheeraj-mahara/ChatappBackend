@@ -13,6 +13,8 @@ import notificationRoutes from "./src/routes/notificationRoutes.js";
 import ChatList from "./src/models/ChatList.js"
 import user from "./src/models/user.js"
 import axios from "axios";
+import { log } from "console"
+import chat from "./src/models/chat.js"
 axios.defaults.withCredentials = true;
 
 config()
@@ -21,14 +23,14 @@ const server = http.createServer(app)
 const port = process.env.PORT || 5000
 
 // const allowedOrigin = "https://chat-vibe-theta.vercel.app";
- const allowedOrigin = [
-      "http://localhost:5173",
-      "https://chat-vibe-theta.vercel.app"
-    ]
+const allowedOrigin = [
+  "http://localhost:5173",
+  "https://chat-vibe-theta.vercel.app"
+]
 
 const io = new Server(server, {
-  cors: { 
- origin: allowedOrigin,
+  cors: {
+    origin: allowedOrigin,
     methods: ["GET", "POST", "DELETE"],
     credentials: true,
   },
@@ -37,7 +39,7 @@ const io = new Server(server, {
 app.set("socketio", io);
 
 app.use(cors({
- origin: allowedOrigin,
+  origin: allowedOrigin,
   credentials: true
 }));
 
@@ -61,61 +63,97 @@ app.use("/api/notification", notificationRoutes);
 const onlineUsers = new Map();
 
 io.on("connection", (socket) => {
-  const userId = socket.handshake.auth?.userId;  
+  const userId = socket.handshake.auth?.userId;
   if (!userId) return socket.disconnect();
 
   onlineUsers.set(String(userId), socket.id);
 
- io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+  io.emit("onlineUsers", Array.from(onlineUsers.keys()));
 
- socket.join(String(userId));
+  socket.join(String(userId));
 
- socket.on("sendMessage", async (data) => {
- const { senderId, receiverId, message, imageUrl } = data;
- let lastMsg = "";
- if (message && message.trim() !== "") {
-   lastMsg = message;
- } else if (imageUrl) {
-   lastMsg = "📷 Image";
- }
- const senderChat = await ChatList.findOneAndUpdate(
-   { ownerId: senderId, contactId: receiverId },
-   {
-     lastMessage: lastMsg,
-     updatedAt: new Date(),
-   },
-   { upsert: true, new: true }
- );
+  socket.on("sendMessage", async (data) => {
 
- const receiverChat = await ChatList.findOneAndUpdate(
-   { ownerId: receiverId, contactId: senderId },
-   {
-     lastMessage: lastMsg,
-     updatedAt: new Date(),
-   },
-   { upsert: true, new: true }
- );
+    const { senderId, receiverId, message, imageUrl, _id } = data;
+    let lastMsg = "";
+    if (message && message.trim() !== "") {
+      lastMsg = message;
+    } else if (imageUrl) {
+      lastMsg = "📷 Image";
+    }
+    const senderChat = await ChatList.findOneAndUpdate(
+      { ownerId: senderId, contactId: receiverId },
+      {
+        lastMessage: lastMsg,
+        updatedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
 
- const sender = await user.findById(senderId).select("name");
- const receiver = await user.findById(receiverId).select("name");
+    const receiverChat = await ChatList.findOneAndUpdate(
+      { ownerId: receiverId, contactId: senderId },
+      {
+        lastMessage: lastMsg,
+        updatedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
 
- io.to(String(receiverId)).emit("newMessage", data);
- io.to(String(senderId)).emit("newMessage", data);
+    const sender = await user.findById(senderId).select("name");
+    const receiver = await user.findById(receiverId).select("name");
 
- io.to(String(senderId)).emit("chatUserUpdate", {
-   contactId: receiverId,
-   user: receiver.name,
-   lastMessage: lastMsg,
-   updatedAt: senderChat.updatedAt,
- });
+    io.to(String(receiverId)).emit("newMessage", data);
+    io.to(String(senderId)).emit("newMessage", data);
 
- io.to(String(receiverId)).emit("chatUserUpdate", {
-   contactId: senderId,
-   user: sender.name,
-   lastMessage: lastMsg,
-   updatedAt: receiverChat.updatedAt,
- });
-});
+
+    await chat.updateOne(
+      { "messages._id": _id },
+      { $set: { "messages.$.status": "delivered" } }
+    );
+    io.to(String(senderId)).emit("messageDelivered", {
+      messageId: _id
+    });
+
+    io.to(String(senderId)).emit("chatUserUpdate", {
+      contactId: receiverId,
+      user: receiver.name,
+      lastMessage: lastMsg,
+      updatedAt: senderChat.updatedAt,
+    });
+
+    io.to(String(receiverId)).emit("chatUserUpdate", {
+      contactId: senderId,
+      user: sender.name,
+      lastMessage: lastMsg,
+      updatedAt: receiverChat.updatedAt,
+    });
+  });
+
+  socket.on("markAsRead", async ({ senderId, messageIds }) => {
+    if (!senderId || !messageIds?.length) return;
+
+    await chat.updateMany(
+      { "messages._id": { $in: messageIds } },
+      {
+        $set: { "messages.$[elem].status": "read" }
+      },
+      {
+        arrayFilters: [{ "elem._id": { $in: messageIds } }]
+      }
+    );
+
+    io.to(String(senderId)).emit("messageRead", {
+      messageIds
+    });
+  });
+
+  socket.on("typing", ({ senderId, receiverId }) => {
+    io.to(String(receiverId)).emit("typing", { senderId });
+  });
+
+  socket.on("stopTyping", ({ senderId, receiverId }) => {
+    io.to(String(receiverId)).emit("stopTyping", { senderId });
+  });
 
 
   socket.on("disconnect", () => {
@@ -123,7 +161,7 @@ io.on("connection", (socket) => {
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 
-  
+
 
 });
 
