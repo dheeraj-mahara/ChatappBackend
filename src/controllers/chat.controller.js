@@ -15,7 +15,7 @@ export const OpenchatPage = async (req, res) => {
     const sender = req.user;
 
     const allUsers = await getAllUsers();
-    
+
     const lastMessages = await getLastMessagesForUser(sender.userid);
     const currentUser = allUsers.find(
       user => String(user.id) === String(sender.userid)
@@ -36,22 +36,29 @@ export const OpenchatPage = async (req, res) => {
           lastMessageText = lastMessageData.message;
         } else if (lastMessageData.imageUrl) {
           lastMessageText = '📷 Image';
+
         }
       }
+      const lastMessageStatus = lastMessageData?.status || "sent";
+      const senderId = lastMessageData?.senderId || "";
+
+
       return {
         id: user.id,
         name: user.name,
         online: user.online,
         lastMessage: lastMessageText,
-        updatedAt: chat.updatedAt
+        updatedAt: chat.updatedAt,
+        lastMessageStatus: lastMessageStatus,
+        senderId: senderId
       };
     }).filter(Boolean);
 
     return res.json({
       success: true,
       currentUser,
-      users, 
-      allUsers 
+      users,
+      allUsers
     });
 
 
@@ -103,10 +110,14 @@ export const getLastMessagesForUser = async (currentUserId) => {
       const [user1, user2] = chat.chatKey.split("_");
       const otherUserId = user1 === currentUserId.toString() ? user2 : user1;
 
+
       lastMessages[otherUserId] = {
         message: lastMsg.message,
         imageUrl: lastMsg.imageUrl,
-        time: lastMsg.time
+        time: lastMsg.time,
+        status: lastMsg.status,
+        senderId: lastMsg.senderId.toString()
+
       };
     });
 
@@ -122,8 +133,9 @@ export const sendMessage = async (req, res) => {
     const senderId = req.user.userid;
     const receiverId = req.params.receiverId;
     const { text } = req.body;
-const sender = await User.findById(senderId).select("name")
-const sendername = sender.name
+    const isSelfMessage = senderId === receiverId;
+    const sender = await User.findById(senderId).select("name")
+    const sendername = sender.name
 
 
 
@@ -133,8 +145,10 @@ const sendername = sender.name
         message: "Empty message"
       });
     }
-        await sendNotification(receiverId, text,sendername);
 
+    if (!isSelfMessage) {
+      await sendNotification(receiverId, text, sendername);
+    }
 
     let imageUrl = null;
     let public_id = null;
@@ -154,12 +168,12 @@ const sendername = sender.name
     const savedMessage = await saveMessageToDB({
       senderId,
       receiverId,
-      message: text,     // ✅ FIX HERE
+      message: text,     
       imageUrl,
       public_id,
       time
     });
-     
+
 
     return res.json({
       success: true,
@@ -209,6 +223,7 @@ export const saveMessageToDB = async ({ senderId, receiverId, message, imageUrl,
 
     chat.messages.push({
       senderId,
+      receiverId,
       message,
       imageUrl,
       public_id,

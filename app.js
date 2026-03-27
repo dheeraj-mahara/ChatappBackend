@@ -15,6 +15,7 @@ import user from "./src/models/user.js"
 import axios from "axios";
 import { log } from "console"
 import chat from "./src/models/chat.js"
+import mongoose from "mongoose"
 axios.defaults.withCredentials = true;
 
 config()
@@ -62,15 +63,40 @@ app.use("/api/notification", notificationRoutes);
 
 const onlineUsers = new Map();
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   const userId = socket.handshake.auth?.userId;
   if (!userId) return socket.disconnect();
 
   onlineUsers.set(String(userId), socket.id);
+  socket.join(String(userId));
 
   io.emit("onlineUsers", Array.from(onlineUsers.keys()));
 
-  socket.join(String(userId));
+
+  const conversations = await chat.find({
+    "messages.receiverId": userId,
+    "messages.status": "sent"
+  });
+
+  for (const convo of conversations) {
+    let updated = false;
+
+    for (const msg of convo.messages) {
+      if (msg.receiverId == userId && msg.status === "sent") {
+        msg.status = "delivered";
+        updated = true;
+
+        io.to(String(msg.senderId)).emit("messageDelivered", {
+          messageId: msg._id
+        });
+      }
+    }
+
+    if (updated) {
+      await convo.save();
+    }
+  }
+
 
   socket.on("sendMessage", async (data) => {
 
@@ -81,6 +107,7 @@ io.on("connection", (socket) => {
     } else if (imageUrl) {
       lastMsg = "📷 Image";
     }
+
     const senderChat = await ChatList.findOneAndUpdate(
       { ownerId: senderId, contactId: receiverId },
       {
@@ -106,13 +133,21 @@ io.on("connection", (socket) => {
     io.to(String(senderId)).emit("newMessage", data);
 
 
-    await chat.updateOne(
-      { "messages._id": _id },
-      { $set: { "messages.$.status": "delivered" } }
-    );
-    io.to(String(senderId)).emit("messageDelivered", {
-      messageId: _id
-    });
+    const isReceiverOnline = onlineUsers.has(String(receiverId));
+
+    if (
+      isReceiverOnline &&
+      mongoose.Types.ObjectId.isValid(_id) // 👈 ADD THIS
+    ) {
+      await chat.updateOne(
+        { "messages._id": _id },
+        { $set: { "messages.$.status": "delivered" } }
+      );
+
+      io.to(String(senderId)).emit("messageDelivered", {
+        messageId: _id
+      });
+    }
 
     io.to(String(senderId)).emit("chatUserUpdate", {
       contactId: receiverId,
@@ -129,25 +164,34 @@ io.on("connection", (socket) => {
     });
   });
 
+
   socket.on("markAsRead", async ({ senderId, messageIds }) => {
     if (!senderId || !messageIds?.length) return;
 
+    const validIds = messageIds.filter(id =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+
+    if (!validIds.length) return;
+
     await chat.updateMany(
-      { "messages._id": { $in: messageIds } },
+      { "messages._id": { $in: validIds } },
       {
         $set: { "messages.$[elem].status": "read" }
       },
       {
-        arrayFilters: [{ "elem._id": { $in: messageIds } }]
+        arrayFilters: [{ "elem._id": { $in: validIds } }]
       }
     );
 
     io.to(String(senderId)).emit("messageRead", {
-      messageIds
+      messageIds: validIds
     });
   });
 
   socket.on("typing", ({ senderId, receiverId }) => {
+    if (senderId === receiverId) return;
+
     io.to(String(receiverId)).emit("typing", { senderId });
   });
 
@@ -160,8 +204,6 @@ io.on("connection", (socket) => {
     onlineUsers.delete(String(userId));
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
-
-
 
 });
 
