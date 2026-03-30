@@ -74,13 +74,12 @@ io.on("connection", async (socket) => {
 
   io.emit("onlineUsers", Array.from(onlineUsers.keys()));
 
-
-  const conversations = await chat.find({
+  const pendingMessages = await chat.find({
     "messages.receiverId": userId,
     "messages.status": "sent"
   });
 
-  for (const convo of conversations) {
+  for (const convo of pendingMessages) {
     let updated = false;
 
     for (const msg of convo.messages) {
@@ -98,7 +97,6 @@ io.on("connection", async (socket) => {
       await convo.save();
     }
   }
-
 
   socket.on("sendMessage", async (data) => {
 
@@ -138,8 +136,7 @@ io.on("connection", async (socket) => {
     const isReceiverOnline = onlineUsers.has(String(receiverId));
 
     if (
-      isReceiverOnline &&
-      mongoose.Types.ObjectId.isValid(_id) // 👈 ADD THIS
+      isReceiverOnline && mongoose.Types.ObjectId.isValid(_id)
     ) {
       await chat.updateOne(
         { "messages._id": _id },
