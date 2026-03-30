@@ -8,7 +8,7 @@ export const LoginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    
+
     if (!username || !password) {
       return res.status(400).json({
         success: false,
@@ -17,7 +17,7 @@ export const LoginUser = async (req, res) => {
     }
 
     const user = await User.findOne({ name: username });
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -37,17 +37,17 @@ export const LoginUser = async (req, res) => {
       { userid: user._id },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
-    );    
+    );
 
 
-res.cookie("token", token, {
-  httpOnly: true,
+    res.cookie("token", token, {
+      httpOnly: true,
 
-  secure: true,
-  sameSite: "none",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: "/" 
-});
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/"
+    });
 
     return res.status(200).json({
       success: true,
@@ -126,14 +126,16 @@ export const SingupUser = async (req, res) => {
 
 export const getAllUsers = async () => {
   try {
-    const users = await User.find({}) .select("_id name contact online");
+    const users = await User.find({}).select("_id name contact online about image");
 
     // same structure jaisa pehle frontend expect karta tha
     return users.map(user => ({
       id: user._id.toString(),
       name: user.name,
       contact: user.contact,
-      online: user.online
+      online: user.online,
+      about: user.about,
+      image: user.image,
     }));
 
   } catch (err) {
@@ -146,8 +148,8 @@ export const logout = async (req, res) => {
   try {
     res.clearCookie("token", {
       httpOnly: true,
-      secure: true, 
-      sameSite: "none", 
+      secure: true,
+      sameSite: "none",
     });
 
     return res.status(200).json({

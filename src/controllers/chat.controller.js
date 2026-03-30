@@ -21,6 +21,7 @@ export const OpenchatPage = async (req, res) => {
       user => String(user.id) === String(sender.userid)
     );
 
+
     const chatUsers = await ChatList.find({
       ownerId: String(sender.userid)
     }).sort({ updatedAt: -1 });
@@ -30,6 +31,9 @@ export const OpenchatPage = async (req, res) => {
       if (!user) return null;
 
       const lastMessageData = lastMessages[user.id];
+
+
+
       let lastMessageText = '';
       if (lastMessageData) {
         if (lastMessageData.message && lastMessageData.message.trim() !== '') {
@@ -47,12 +51,15 @@ export const OpenchatPage = async (req, res) => {
         id: user.id,
         name: user.name,
         online: user.online,
+        about: user.about,
+        image: user.image,
         lastMessage: lastMessageText,
         updatedAt: chat.updatedAt,
         lastMessageStatus: lastMessageStatus,
         senderId: senderId
       };
     }).filter(Boolean);
+
 
     return res.json({
       success: true,
@@ -168,7 +175,7 @@ export const sendMessage = async (req, res) => {
     const savedMessage = await saveMessageToDB({
       senderId,
       receiverId,
-      message: text,     
+      message: text,
       imageUrl,
       public_id,
       time

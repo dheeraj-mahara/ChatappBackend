@@ -9,6 +9,7 @@ import cors from "cors";
 import ChatRoutes from "./src/routes/chat.router.js";
 import AuthRoutes from "./src/routes/auth.router.js";
 import StatusRoutes from "./src/routes/status.router.js"
+import userRoutes from "./src/routes/user.router.js"
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import ChatList from "./src/models/ChatList.js"
 import user from "./src/models/user.js"
@@ -59,6 +60,7 @@ app.use("/api/auth", AuthRoutes);
 app.use("/api/chat", ChatRoutes);
 app.use("/api/status", StatusRoutes);
 app.use("/api/notification", notificationRoutes);
+app.use("/api/user", userRoutes);
 
 
 const onlineUsers = new Map();
