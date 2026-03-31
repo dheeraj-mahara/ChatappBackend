@@ -53,6 +53,7 @@ export const OpenchatPage = async (req, res) => {
         online: user.online,
         about: user.about,
         image: user.image,
+        contact: user.contact,
         lastMessage: lastMessageText,
         updatedAt: chat.updatedAt,
         lastMessageStatus: lastMessageStatus,
