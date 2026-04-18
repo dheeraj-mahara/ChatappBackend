@@ -6,23 +6,29 @@ const messageSchema = new mongoose.Schema({
     ref: "User",
     required: true
   },
-   receiverId: {   
+  receiverId: {   
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-     required: false
-
+    required: false
   },
   message: String,
   imageUrl: String,
   time: String,
   public_id: String,
-    status: {
+
+  status: {
     type: String,
     enum: ["sent", "delivered", "read"],
     default: "sent"
-  }
-}
-,{ timestamps: true });
+  },
+
+  // NEW FIELD
+  deletedFor: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }]
+
+},{ timestamps: true });
 
 
 const chatSchema = new mongoose.Schema(

@@ -4,7 +4,8 @@ import {
   OpenchatPage,
   sendMessage,
   DeleteMessage,
-  GetChatMessages
+  GetChatMessages,
+  DeleteChatUser
 } from "../controllers/chat.controller.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { getChatData } from "../services/chat.service.js";
@@ -36,5 +37,6 @@ router.get(
 
 // delete message
 router.delete("/message/:messageId", CheakLogin, DeleteMessage);
+router.delete("/deletechatuser",CheakLogin, DeleteChatUser)
 
 export default router;

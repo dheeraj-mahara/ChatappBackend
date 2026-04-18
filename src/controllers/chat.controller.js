@@ -100,7 +100,6 @@ export const GetChatMessages = async (req, res) => {
   }
 };
 
-
 export const getLastMessagesForUser = async (currentUserId) => {
 
   try {
@@ -144,7 +143,6 @@ export const sendMessage = async (req, res) => {
     const isSelfMessage = senderId === receiverId;
     const sender = await User.findById(senderId).select("name")
     const sendername = sender.name
-
 
 
     if (!text && !req.file) {
@@ -193,7 +191,6 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
-
 
 export const saveMessageToDB = async ({ senderId, receiverId, message, imageUrl, public_id, time }) => {
   try {
@@ -326,8 +323,6 @@ export const imagework = async (req, res) => {
 }
 
 
-
-
 const getPublicIdFromUrl = (url) => {
   const parts = url.split("/");
   const len = parts.length;
@@ -340,6 +335,10 @@ const getPublicIdFromUrl = (url) => {
 export const DeleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
+    const { type } = req.body;
+    const userId = req.user.userid;
+    
+    
 
     const chat = await Chat.findOne({ "messages._id": messageId });
 
@@ -353,25 +352,37 @@ export const DeleteMessage = async (req, res) => {
       return res.status(404).json({ success: false, message: "Message not found" });
     }
 
-
-    let publicId = message.public_id;
-
-    if (!publicId && message.imageUrl) {
-      publicId = getPublicIdFromUrl(message.imageUrl);
-    }
-
-    if (publicId) {
-      try {
-        await cloudinary.uploader.destroy(publicId);
-      } catch (cloudErr) {
-        console.log("Cloudinary delete failed:", cloudErr.message);
+    if (type === "me") {
+      if (!message.deletedFor.includes(userId)) {
+        message.deletedFor.push(userId);        
       }
+      
+
+      await chat.save();
+      return res.json({ success: true, message: "Deleted for me" });
     }
 
-    chat.messages.pull({ _id: messageId });
-    await chat.save();
+    if (type === "everyone") {
 
-    res.json({ success: true, messageId });
+      let publicId = message.public_id;
+
+      if (!publicId && message.imageUrl) {
+        publicId = getPublicIdFromUrl(message.imageUrl);
+      }
+
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (cloudErr) {
+          console.log("Cloudinary delete failed:", cloudErr.message);
+        }
+      }
+
+      chat.messages.pull({ _id: messageId });
+      await chat.save();
+
+      return res.json({ success: true, message: "Deleted for everyone" });
+    }
 
   } catch (err) {
     console.error("Delete message error:", err);
@@ -379,3 +390,40 @@ export const DeleteMessage = async (req, res) => {
   }
 };
 
+export const DeleteChatUser = async (req, res) => {
+  try {
+    const { selectedUserId } = req.query;
+    const userId = req.user.userid; // logged in user
+
+    if (!selectedUserId) {
+      return res.status(400).json({ success: false, message: "User required" });
+    }
+
+    // 1️⃣ ChatList se remove
+    await ChatList.findOneAndDelete({
+      ownerId: userId,
+      contactId: selectedUserId
+    });
+
+    // 2️⃣ Chat messages delete for me
+    const chatKey = [userId, selectedUserId].sort().join("_");
+
+    const chat = await Chat.findOne({ chatKey });
+
+    if (chat) {
+      chat.messages.forEach((msg) => {
+        if (!msg.deletedFor?.includes(userId)) {
+          msg.deletedFor.push(userId);
+        }
+      });
+
+      await chat.save();
+    }
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false });
+  }
+};
