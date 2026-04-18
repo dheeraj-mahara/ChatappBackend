@@ -1,12 +1,17 @@
 import jwt from "jsonwebtoken"
 
 export const CheakLogin = (req, res, next) => {
-  const token = req.cookies?.token;
-  if (!token) {
-    return res.status(401).json({ success: false, message: "No token" });
-  }
-
   try {
+    let token = req.cookies?.token;  
+
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.replace('Bearer ', '');
+    }
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: "No token" });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = { userid: decoded.userid };
     next();

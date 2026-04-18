@@ -21,7 +21,7 @@ export const LoginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password"
+        message: "Invalid username "
       });
     }
 
@@ -51,6 +51,7 @@ export const LoginUser = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      token: token,
       user: {
         id: user._id,
         username: user.name
