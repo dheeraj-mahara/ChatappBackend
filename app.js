@@ -66,10 +66,14 @@ app.use("/api/user", userRoutes);
 const onlineUsers = new Map();
 
 io.on("connection", async (socket) => {
+
   const userId = socket.handshake.auth?.userId;
   if (!userId) return socket.disconnect();
 
-  onlineUsers.set(String(userId), socket.id);
+  if (!onlineUsers.has(userId)) {
+    onlineUsers.set(userId, new Set());
+  }
+  onlineUsers.get(userId).add(socket.id);
   socket.join(String(userId));
 
   io.emit("onlineUsers", Array.from(onlineUsers.keys()));
@@ -164,6 +168,10 @@ io.on("connection", async (socket) => {
   });
 
 
+  socket.on("getOnlineUsers", () => {
+    socket.emit("onlineUsers", Array.from(onlineUsers.keys()));
+  });
+
   socket.on("markAsRead", async ({ senderId, messageIds }) => {
     if (!senderId || !messageIds?.length) return;
 
@@ -198,9 +206,112 @@ io.on("connection", async (socket) => {
     io.to(String(receiverId)).emit("stopTyping", { senderId });
   });
 
+  // 📞 CALL EVENTS
+
+
+  // Call user
+  socket.on("call-user", async ({ to, from, type }) => {
+    console.log("CALL USER:", from, "→", to);
+    if (!to || !from) return;
+
+    const caller = await user.findById(from).select("name image");
+
+
+    const receiverSockets = onlineUsers.get(String(to));
+
+    if (!receiverSockets) {
+      socket.emit("call-failed", { message: "User offline" });
+    }
+
+    if (receiverSockets) {
+      for (let socketId of receiverSockets) {
+        io.to(socketId).emit("incoming-call", {
+          fromUser: caller,
+          type,
+        });
+      }
+    }
+  });
+
+
+  // Accept call
+  socket.on("call-accepted", ({ to }) => {
+    const callerSockets = onlineUsers.get(String(to));
+
+    if (callerSockets) {
+      for (let socketId of callerSockets) {
+        io.to(socketId).emit("call-accepted");
+      }
+    }
+  });
+
+
+  // Reject call
+  socket.on("call-rejected", ({ to }) => {    
+
+    const callerSockets = onlineUsers.get(String(to));
+
+    if (callerSockets) {
+      for (let socketId of callerSockets) {
+        io.to(socketId).emit("call-rejected");
+      }
+    }
+  });
+
+
+  // End call
+  socket.on("call-ended", ({ to }) => {
+    const sockets = onlineUsers.get(String(to));
+
+    if (sockets) {
+      for (let socketId of sockets) {
+        io.to(socketId).emit("call-ended");
+      }
+    }
+  });
+
+  // WebRTC offer forward
+socket.on("webrtc-offer", ({ to, offer }) => {
+  const sockets = onlineUsers.get(String(to));
+  if (sockets) {
+    for (let sid of sockets) {
+      io.to(sid).emit("webrtc-offer", { offer });
+    }
+  }
+});
+
+// WebRTC answer forward
+socket.on("webrtc-answer", ({ to, answer }) => {
+  const sockets = onlineUsers.get(String(to));
+  if (sockets) {
+    for (let sid of sockets) {
+      io.to(sid).emit("webrtc-answer", { answer });
+    }
+  }
+});
+
+// ICE candidate forward
+socket.on("ice-candidate", ({ to, candidate }) => {
+  const sockets = onlineUsers.get(String(to));
+  if (sockets) {
+    for (let sid of sockets) {
+      io.to(sid).emit("ice-candidate", { candidate });
+    }
+  }
+});
+
 
   socket.on("disconnect", () => {
-    onlineUsers.delete(String(userId));
+    const userSockets = onlineUsers.get(userId);
+
+    if (userSockets) {
+      userSockets.delete(socket.id);
+
+      if (userSockets.size === 0) {
+        onlineUsers.delete(userId);
+      }
+    }
+
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 
